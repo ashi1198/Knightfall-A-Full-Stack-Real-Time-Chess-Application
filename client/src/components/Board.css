@@ -1,0 +1,77 @@
+/* src/components/Board.css */
+.board-container {
+  width: 90vw;
+  max-width: 600px;
+  margin: auto;
+  aspect-ratio: 1 / 1;
+}
+
+.board {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  grid-template-rows: repeat(8, 1fr);
+  width: 100%;
+  height: 100%;
+  border-radius: 4px;
+  box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+}
+
+.square {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  /* Add transition for a smooth effect */
+  transition: background-color 0.1s ease-in-out;
+}
+
+.square.light {
+  background-color: #eeeed2; /* Creamy white */
+}
+
+.square.dark {
+  background-color: #769656; /* Chess.com green */
+}
+
+.piece {
+  font-size: clamp(20px, 10vw, 55px);
+  cursor: pointer;
+  line-height: 1;
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.4);
+}
+
+.highlight-overlay {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.highlight-overlay.selected {
+  background-color: rgba(255, 255, 0, 0.5);
+}
+
+.highlight-overlay.option::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 35%;
+  height: 35%;
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 50%;
+}
+
+
+/* Highlight the piece itself when hovered */
+.square .piece:hover {
+  text-shadow: 0 0 10px rgba(255, 255, 0, 0.8);
+}
+
+/* Highlight the square when hovered */
+.square:hover {
+  background-color: #baca44; /* A bright, yellowish-green highlight color */
+}
