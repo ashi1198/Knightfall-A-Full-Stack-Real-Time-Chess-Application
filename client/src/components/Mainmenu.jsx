@@ -1,6 +1,6 @@
 // client/src/components/MainMenu.jsx
 import React from 'react';
-import './MainMenu.css';
+import './Mainmenu.css';
 
 // The component now receives the user object as a prop
 function MainMenu({ onSelectMode, user }) {
