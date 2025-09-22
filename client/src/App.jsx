@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Game from './components/Game.jsx';
-import MainMenu from './components/MainMenu.jsx';
+import MainMenu from './components/Mainmenu.jsx';
 import AuthPage from './components/AuthPage.jsx';
 import axios from 'axios';
 import { AnimatedBackground } from './components/AnimatedBackground.jsx';
