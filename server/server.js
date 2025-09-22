@@ -24,7 +24,7 @@ app.use(express.json());
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "https://knightfall-chess.vercel.app/",
+    origin: "https://knightfall-chess.vercel.app",
     methods: ["GET", "POST"],
   },
 });
