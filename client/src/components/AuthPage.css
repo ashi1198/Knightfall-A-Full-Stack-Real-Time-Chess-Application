@@ -1,0 +1,73 @@
+/* --- AUTH PAGE STYLES --- */
+.auth-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 80vh;
+}
+
+.auth-form {
+  background: white;
+  padding: 2.5rem;
+  border-radius: 12px;
+  box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.auth-form h2 {
+  margin: 0;
+  text-align: center;
+  color: #333;
+}
+
+.auth-form input {
+  padding: 12px;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+.auth-form button {
+  padding: 12px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  background-color: #588c4c;
+  color: white;
+  border: none;
+  border-radius: 6px;
+}
+
+.error-message {
+  color: #d93025;
+  text-align: center;
+  margin: 0;
+}
+
+.toggle-auth {
+  color: #007bff;
+  cursor: pointer;
+  text-align: center;
+  margin-top: 1rem;
+}
+
+.toggle-auth:hover {
+  text-decoration: underline;
+}
+
+.logout-btn {
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+}
+.logout-btn:hover {
+  background-color: #5a6268;
+}

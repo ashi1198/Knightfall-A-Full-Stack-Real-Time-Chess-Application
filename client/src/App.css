@@ -1,20 +1,42 @@
-/* A modern font stack for better readability */
+/* --- Base Styles --- */
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  background-color: #f0f2f5;
-  color: #1c1e21;
   margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  color: #e0e0e0;
+  background-color: #000; /* Black fallback for the background */
 }
 
+/* --- THE FIX for the background components --- */
+.fullscreen-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* --- Main App Layout --- */
 .App {
+  position: relative;
+  z-index: 1; /* Puts content ON TOP of the fixed background */
+  background-color: transparent;
   text-align: center;
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
 .App-header {
-  background-color: #282c34;
-  padding: 1.25rem;
+  background-color: rgba(28, 28, 30, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   color: white;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+  padding: 1rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .App-header h1 {
@@ -23,42 +45,130 @@ body {
 }
 
 main {
-  padding: 1rem;
-}
-
-.status-text {
-  font-size: 1.2rem;
-  font-weight: 500;
-  color: #333;
-  min-height: 1.5rem; /* Prevents layout shift */
-  margin: 1rem 0;
-}
-
-.game-controls {
+  flex-grow: 1;
+  width: 100%;
   display: flex;
-  gap: 12px;
-  margin-bottom: 1rem;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
+  padding: 1rem;
+  box-sizing: border-box;
 }
 
+/* --- Auth Page Styles --- */
+.auth-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-grow: 1;
+}
+
+.auth-form {
+  background: rgba(28, 28, 30, 0.8);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  padding: 2.5rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.auth-form h2 { margin: 0; text-align: center; color: white; }
+.error-message { color: #ff8a80; text-align: center; margin: 0; }
+.toggle-auth { color: #8ab4f8; cursor: pointer; text-align: center; margin-top: 1rem; }
+.toggle-auth:hover { text-decoration: underline; }
+
+/* --- Main Menu Styles --- */
+.main-menu {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2rem;
+  gap: 1.5rem;
+}
+.main-menu h2 { font-size: 2rem; color: #fff; }
+.menu-options { display: flex; flex-wrap: wrap; justify-content: center; gap: 2rem; }
+.menu-options button {
+  background-color: rgba(28, 28, 30, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 1.5rem;
+  width: 260px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+.menu-options button:hover { transform: translateY(-5px); box-shadow: 0 8px 15px rgba(0,0,0,0.2); }
+.menu-options h3 { margin-top: 0; margin-bottom: 0.5rem; color: #fff; font-size: 1.25rem; display: flex; align-items: center; gap: 0.75rem; }
+.menu-options p { margin: 0; color: #ccc; font-size: 0.95rem; }
+
+/* --- Game Component Styles --- */
+.status-text { font-size: 1.2rem; font-weight: 500; color: #ccc; min-height: 1.5rem; margin: 1rem 0; }
+.game-controls { display: flex; gap: 12px; margin-bottom: 1rem; justify-content: center; align-items: center; }
 .game-controls input {
   padding: 12px;
   font-size: 1rem;
-  border: 1px solid #ccc;
+  border: 1px solid #444;
+  background-color: #2a2a2a;
+  color: #e0e0e0;
   border-radius: 6px;
-  transition: all 0.2s ease-in-out;
 }
-
-/* Added focus style for better accessibility */
-.game-controls input:focus {
-  outline: none;
-  border-color: #588c4c;
-  box-shadow: 0 0 0 3px rgba(88, 140, 76, 0.25);
-}
-
 .game-controls button {
   padding: 12px 22px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  background-color: #3d3d3d;
+  color: white;
+  border: 1px solid #555;
+  border-radius: 6px;
+  transition: background-color 0.2s;
+}
+.game-controls button:hover { background-color: #4a4a4a; }
+.logout-btn, .guest-btn { background-color: #4a4a4a; border: 1px solid #555; color: white; }
+.separator { text-align: center; font-weight: bold; color: #888; margin: 0.5rem 0; }
+
+/* --- Board Styles --- */
+.board-container { width: 90vw; max-width: 600px; margin: auto; aspect-ratio: 1 / 1; }
+.board { display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); width: 100%; height: 100%; border-radius: 4px; box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
+.square { width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; position: relative; }
+.square.light { background-color: #eeeed2; }
+.square.dark { background-color: #769656; }
+.piece { font-size: clamp(20px, 10vw, 55px); cursor: pointer; line-height: 1; }
+.highlight-overlay { position: absolute; width: 100%; height: 100%; box-sizing: border-box; }
+.highlight-overlay.selected { background-color: rgba(255, 255, 0, 0.5); }
+.highlight-overlay.option::after { content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 35%; height: 35%; background-color: rgba(0, 0, 0, 0.2); border-radius: 50%; }
+.square .piece:hover { text-shadow: 0 0 10px rgba(255, 255, 0, 0.8); }
+.square:hover { background-color: #baca44; }
+
+/* Add to your main App.css file */
+.local-game-info {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  width: 100%;
+  max-width: 600px;
+  margin-bottom: 1rem;
+}
+
+.win-counter {
+  font-size: 1.2rem;
+  font-weight: bold;
+  padding: 8px 16px;
+  background-color: rgba(28, 28, 30, 0.7);
+  border-radius: 8px;
+}
+
+.restart-btn, .flip-btn {
+  padding: 10px 20px;
   font-size: 1rem;
   font-weight: bold;
   cursor: pointer;
@@ -66,25 +176,4 @@ main {
   color: white;
   border: none;
   border-radius: 6px;
-  transition: all 0.2s ease-in-out;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.game-controls button:hover {
-  background-color: #4a773f;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-  transform: translateY(-2px);
-}
-
-/* Added active state for better feedback when clicked */
-.game-controls button:active {
-  transform: translateY(0px);
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.game-controls button:disabled {
-  background-color: #cccccc;
-  cursor: not-allowed;
-  transform: translateY(0);
-  box-shadow: none;
 }

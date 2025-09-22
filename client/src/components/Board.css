@@ -23,24 +23,35 @@
   justify-content: center;
   align-items: center;
   position: relative;
-  /* Add transition for a smooth effect */
-  transition: background-color 0.1s ease-in-out;
 }
 
 .square.light {
-  background-color: #eeeed2; /* Creamy white */
+  background-color: #f7f1e3; /* A warmer, parchment-like off-white */
 }
 
 .square.dark {
-  background-color: #769656; /* Chess.com green */
+  background-color: #769656ce;
 }
 
 .piece {
   font-size: clamp(20px, 10vw, 55px);
   cursor: pointer;
   line-height: 1;
-  text-shadow: 0 0 2px rgba(0, 0, 0, 0.4);
+  /* Use a very subtle shadow for depth */
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
 }
+
+/* --- NEW: Specific Colors for Pieces --- */ 
+ .white-piece {
+    color: #f0f0f0; /* A slightly softer white */
+  /* A soft, dark drop shadow to lift the piece off the board */
+  text-shadow: 0px 2px 4px rgba(0, 0, 0, 1.0);
+}
+.black-piece {
+  color: #2b2b2b; /* A dark, charcoal gray instead of pure black */
+}
+
+/* ... (rest of your highlight styles) ... */
 
 .highlight-overlay {
   position: absolute;

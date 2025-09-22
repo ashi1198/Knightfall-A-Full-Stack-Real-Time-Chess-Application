@@ -1,9 +1,7 @@
-// client/src/components/Game.jsx
 import React, { useState, useEffect } from 'react';
 import { Chess } from 'chess.js';
 import io from 'socket.io-client';
 import Board from './Board.jsx';
-// The line below is commented out. When your engine is compiled, you will uncomment it.
 // import Module from '/engine.js'; 
 
 let socket;
@@ -19,26 +17,40 @@ function Game({ mode, onExit }) {
   const [isGameOver, setIsGameOver] = useState(false);
   const [engine, setEngine] = useState(null);
   const [isSearching, setIsSearching] = useState(false);
+  const [whiteWins, setWhiteWins] = useState(0);
+  const [blackWins, setBlackWins] = useState(0);
+  const [showRestartBtn, setShowRestartBtn] = useState(false);
 
   useEffect(() => {
+    setGame(new Chess());
+    setStatus("Let's Play!");
+    setIsGameOver(false);
+    setShowRestartBtn(false);
+    setMoveFrom('');
+    setHighlightedSquares({});
+    setPlayerColor(null);
+    setGameId('');
+
     if (mode === 'online') {
       const SERVER_URL = import.meta.env.VITE_SERVER_URL;
       socket = io(SERVER_URL);
-
-      socket.on('assignedColor', (color) => { setPlayerColor(color); });
+      
+      socket.on('assignedColor', (color) => { 
+        setPlayerColor(color);
+        setOrientation(color === 'w' ? 'white' : 'black');
+      });
       socket.on('gameState', (fen) => { updateGame(fen); });
       socket.on('moveMade', (data) => { updateGame(data.fen); });
-      socket.on('gameOver', (data) => { handleGameOver(data); });
+      socket.on('gameOver', (data) => { handleGameOver(data, 'online'); });
       socket.on('gameFound', (data) => {
         setIsSearching(false);
         setGameId(data.roomId);
         updateGame(data.fen);
         setPlayerColor(data.colors[socket.id]);
+        setOrientation(data.colors[socket.id] === 'w' ? 'white' : 'black');
       });
       socket.on('opponentDisconnected', () => {
-        setIsGameOver(true);
-        setStatus("Opponent disconnected.");
-        alert("Your opponent disconnected.");
+        handleGameOver({ reason: "Opponent disconnected." }, 'online');
       });
 
     } else if (mode === 'engine') {
@@ -57,6 +69,11 @@ function Game({ mode, onExit }) {
         setStatus("Engine loaded. Your move!");
       });
       */
+    } else if (mode === 'local') {
+      setWhiteWins(0);
+      setBlackWins(0);
+      setStatus(getGameStatus(new Chess()));
+      setOrientation('white');
     }
 
     return () => {
@@ -65,8 +82,20 @@ function Game({ mode, onExit }) {
   }, [mode]);
   
   const getGameStatus = (currentGame) => {
-    if (currentGame.isCheckmate()) return `Checkmate! ${currentGame.turn() === 'w' ? 'Black' : 'White'} wins.`;
-    if (currentGame.isDraw()) return "Draw!";
+    if (currentGame.isCheckmate()) {
+      const winner = currentGame.turn() === 'w' ? 'Black' : 'White';
+      if (mode === 'local' && !isGameOver) {
+        winner === 'White' ? setWhiteWins(w => w + 1) : setBlackWins(b => b + 1);
+      }
+      setIsGameOver(true);
+      setShowRestartBtn(true);
+      return `Checkmate! ${winner} wins.`;
+    }
+    if (currentGame.isDraw()) {
+        setIsGameOver(true);
+        setShowRestartBtn(true);
+        return "Draw!";
+    }
     return `${currentGame.turn() === 'w' ? "White's" : "Black's"} turn`;
   }
   
@@ -76,14 +105,24 @@ function Game({ mode, onExit }) {
     setStatus(getGameStatus(newGame));
   };
   
-  const handleGameOver = (data) => {
-    setIsGameOver(true);
-    setStatus(data.reason);
-    alert(data.reason);
+  const handleGameOver = (data, source) => {
+    if (source === 'online') {
+        setIsGameOver(true);
+        setStatus(data.reason);
+        alert(data.reason);
+    }
   }
 
+  const handleRestart = () => {
+    const newGame = new Chess();
+    setGame(newGame);
+    setStatus(getGameStatus(newGame));
+    setIsGameOver(false);
+    setShowRestartBtn(false);
+    setOrientation('white');
+  };
+
   const handleJoinGame = () => { if (gameId && socket) socket.emit('joinRoom', gameId); };
-  
   const handleFindGame = () => {
     if (socket) {
       setIsSearching(true);
@@ -104,23 +143,15 @@ function Game({ mode, onExit }) {
       setOrientation(p => p === 'white' ? 'black' : 'white'); 
     } else if (mode === 'online' && socket) {
       socket.emit('playerMove', { roomId: gameId, from, to, promotion: 'q' });
-    } else if (mode === 'engine' && engine) {
-        setGame(gameCopy);
-        setStatus("Engine is thinking...");
-        engine.makeUserMove(from + to);
-        setTimeout(() => {
-          const engineMoveStr = engine.getBestMove();
-          gameCopy.move({ from: engineMoveStr.substring(0, 2), to: engineMoveStr.substring(2, 4) });
-          updateGame(gameCopy.fen());
-        }, 100);
     }
     return true;
   }
 
   function onSquareClick(square) {
+    if (isGameOver) return;
+    
     const currentTurn = game.turn();
-    if (isGameOver || (mode === 'online' && currentTurn !== playerColor)) return;
-    if (mode === 'engine' && currentTurn !== 'w') return;
+    if (mode === 'online' && currentTurn !== playerColor) return;
     
     const pieceOnTarget = game.get(square);
     if (moveFrom && pieceOnTarget && pieceOnTarget.color === currentTurn) {
@@ -131,17 +162,20 @@ function Game({ mode, onExit }) {
       setHighlightedSquares(newHighlights);
       return;
     }
+    
     if (square === moveFrom) {
       setMoveFrom('');
       setHighlightedSquares({});
       return;
     }
+
     if (moveFrom) {
       handleMove(moveFrom, square);
       setMoveFrom('');
       setHighlightedSquares({});
       return;
     }
+
     const piece = game.get(square);
     if (piece && piece.color === currentTurn) {
       setMoveFrom(square);
@@ -170,6 +204,18 @@ function Game({ mode, onExit }) {
                 {isSearching ? 'Searching...' : 'Find a Random Game'}
              </button>
           </div>
+        </div>
+      )}
+      
+      {mode === 'local' && (
+        <div className="local-game-info">
+          <div className="win-counter">White: {whiteWins}</div>
+          {showRestartBtn ? (
+            <button onClick={handleRestart} className="restart-btn">Play Again</button>
+          ) : (
+            <button onClick={() => setOrientation(p => p === 'white' ? 'black' : 'white')} className="flip-btn">Flip Board</button>
+          )}
+          <div className="win-counter">Black: {blackWins}</div>
         </div>
       )}
       
