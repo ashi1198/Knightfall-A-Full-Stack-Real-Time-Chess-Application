@@ -71,3 +71,8 @@
 .logout-btn:hover {
   background-color: #5a6268;
 }
+.google-btn-wrapper {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 0.75rem;
+}

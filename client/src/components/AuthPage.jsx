@@ -1,6 +1,7 @@
 // client/src/components/AuthPage.jsx
 import React, { useState } from 'react';
 import axios from 'axios';
+import { GoogleLogin } from '@react-oauth/google';
 import "./AuthPage.css"
 // The onAuth prop is now an onLogin prop to be more specific
 function AuthPage({ onLogin, onGuestLogin }) {
@@ -28,6 +29,19 @@ function AuthPage({ onLogin, onGuestLogin }) {
     }
   };
 
+  const handleGoogleSuccess = async (credentialResponse) => {
+    setError('');
+    try {
+      const serverUrl = import.meta.env.VITE_SERVER_URL;
+      const response = await axios.post(`${serverUrl}/api/auth/google`, {
+        credential: credentialResponse.credential,
+      });
+      onLogin(response.data);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Google sign-in failed.');
+    }
+  };
+
   return (
     <div className="auth-container">
       <form onSubmit={handleSubmit} className="auth-form">
@@ -40,12 +54,19 @@ function AuthPage({ onLogin, onGuestLogin }) {
           {isLogin ? 'Need an account? Register' : 'Have an account? Login'}
         </p>
         
-        {/* --- NEW GUEST BUTTON --- */}
+        <div className="separator">OR</div>
+        <div className="google-btn-wrapper">
+          <GoogleLogin
+            onSuccess={handleGoogleSuccess}
+            onError={() => setError('Google sign-in failed.')}
+            theme="filled_black"
+            shape="pill"
+          />
+        </div>
         <div className="separator">OR</div>
         <button type="button" className="guest-btn" onClick={onGuestLogin}>
           Play as Guest
         </button>
-        {/* ------------------------- */}
       </form>
     </div>
   );

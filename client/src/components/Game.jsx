@@ -6,7 +6,7 @@ import Board from './Board.jsx';
 
 let socket;
 
-function Game({ mode, onExit }) {
+function Game({ mode, onExit, token }) {
   const [game, setGame] = useState(new Chess());
   const [playerColor, setPlayerColor] = useState(null);
   const [gameId, setGameId] = useState('');
@@ -33,7 +33,11 @@ function Game({ mode, onExit }) {
 
     if (mode === 'online') {
       const SERVER_URL = import.meta.env.VITE_SERVER_URL;
-      socket = io(SERVER_URL);
+      socket = io(SERVER_URL, { auth: { token } });
+      socket.on('connect_error', (err) => {
+        setStatus(`Connection failed: ${err.message}. Try logging in again.`);
+      });
+      socket.on('gameError', (msg) => { setStatus(msg); });
       
       socket.on('assignedColor', (color) => { 
         setPlayerColor(color);
