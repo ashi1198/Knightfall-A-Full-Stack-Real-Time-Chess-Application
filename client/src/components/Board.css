@@ -86,3 +86,11 @@
 .square:hover {
   background-color: #baca44; /* A bright, yellowish-green highlight color */
 }
+.board-container,
+.board,
+.square,
+.piece {
+  user-select: none;
+  -webkit-user-select: none;
+  caret-color: transparent;
+}
