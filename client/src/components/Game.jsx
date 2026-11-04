@@ -1,8 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Chess } from 'chess.js';
 import io from 'socket.io-client';
 import Board from './Board.jsx';
-// import Module from '/engine.js'; 
+import './EngineSetup.css';
+
+const ENGINE_LEVELS = [
+  { id: 1, name: 'Beginner', hint: 'Makes plenty of mistakes' },
+  { id: 2, name: 'Casual', hint: 'Sees simple tactics' },
+  { id: 3, name: 'Club', hint: 'Solid, punishes blunders' },
+  { id: 4, name: 'Strong', hint: 'Thinks ~3s per move' },
+];
 
 let socket;
 
@@ -15,11 +22,18 @@ function Game({ mode, onExit, token }) {
   const [highlightedSquares, setHighlightedSquares] = useState({});
   const [orientation, setOrientation] = useState('white');
   const [isGameOver, setIsGameOver] = useState(false);
-  const [engine, setEngine] = useState(null);
   const [isSearching, setIsSearching] = useState(false);
   const [whiteWins, setWhiteWins] = useState(0);
   const [blackWins, setBlackWins] = useState(0);
   const [showRestartBtn, setShowRestartBtn] = useState(false);
+  const [engineLevel, setEngineLevel] = useState(3);
+  const [colorChoice, setColorChoice] = useState('w');
+  const [engineReady, setEngineReady] = useState(false); // setup finished, game in progress
+  const [isThinking, setIsThinking] = useState(false);
+  const workerRef = useRef(null);
+  const gameRef = useRef(game);
+  const positionsRef = useRef([]); // FENs of positions before each move (for repetition)
+  const requestId = useRef(0);
 
   useEffect(() => {
     setGame(new Chess());
@@ -58,21 +72,27 @@ function Game({ mode, onExit, token }) {
       });
 
     } else if (mode === 'engine') {
-      // --- ENGINE LOGIC IS COMMENTED OUT ---
-      // When you are ready, uncomment this block to load your WASM engine.
-      /*
-      setStatus("Loading Engine...");
-      Module().then((loadedModule) => {
-        const engineAPI = {
-          setPosition: loadedModule.cwrap('setPosition', null, ['string']),
-          makeUserMove: loadedModule.cwrap('makeUserMove', null, ['string']),
-          getBestMove: loadedModule.cwrap('getBestMove', 'string', []),
-        };
-        engineAPI.setPosition("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-        setEngine(engineAPI);
-        setStatus("Engine loaded. Your move!");
-      });
-      */
+      positionsRef.current = [];
+      setEngineReady(false);
+      setIsThinking(false);
+      const worker = new Worker(new URL('../engine/engine.worker.js', import.meta.url), { type: 'module' });
+      worker.onmessage = (e) => {
+        const { id, move, error } = e.data;
+        if (id !== requestId.current) return; // stale answer (game was restarted)
+        setIsThinking(false);
+        if (error || !move) { setStatus('The engine failed to move. Try restarting.'); return; }
+        const g = new Chess(gameRef.current.fen());
+        positionsRef.current.push(g.fen());
+        try {
+          g.move({ from: move.from, to: move.to, promotion: move.promotion });
+        } catch {
+          setStatus('The engine returned an illegal move.');
+          return;
+        }
+        setGame(g);
+        setStatus(getGameStatus(g));
+      };
+      workerRef.current = worker;
     } else if (mode === 'local') {
       setWhiteWins(0);
       setBlackWins(0);
@@ -82,8 +102,26 @@ function Game({ mode, onExit, token }) {
 
     return () => {
       if (socket) socket.disconnect();
+      if (workerRef.current) { workerRef.current.terminate(); workerRef.current = null; }
     };
   }, [mode]);
+
+  useEffect(() => { gameRef.current = game; }, [game]);
+
+  // Ask the engine for a move whenever it is its turn
+  useEffect(() => {
+    if (mode !== 'engine' || !engineReady || isGameOver || !workerRef.current) return;
+    if (game.turn() === playerColor || game.isGameOver()) return;
+    const id = ++requestId.current;
+    setIsThinking(true);
+    setStatus('Computer is thinking...');
+    workerRef.current.postMessage({
+      id,
+      fen: game.fen(),
+      level: engineLevel,
+      history: positionsRef.current.slice(),
+    });
+  }, [game, engineReady, playerColor, isGameOver, mode, engineLevel]);
   
   const getGameStatus = (currentGame) => {
     if (currentGame.isCheckmate()) {
@@ -94,6 +132,16 @@ function Game({ mode, onExit, token }) {
       setIsGameOver(true);
       setShowRestartBtn(true);
       return `Checkmate! ${winner} wins.`;
+    }
+    if (mode === 'engine') {
+      const key = (f) => f.split(' ').slice(0, 4).join(' ');
+      const k = key(currentGame.fen());
+      const seen = positionsRef.current.filter((f) => key(f) === k).length + 1;
+      if (seen >= 3) {
+        setIsGameOver(true);
+        setShowRestartBtn(true);
+        return 'Draw by repetition!';
+      }
     }
     if (currentGame.isDraw()) {
         setIsGameOver(true);
@@ -118,12 +166,40 @@ function Game({ mode, onExit, token }) {
   }
 
   const handleRestart = () => {
+    if (mode === 'engine') {
+      requestId.current++;
+      positionsRef.current = [];
+      setIsThinking(false);
+      setEngineReady(false);
+      setPlayerColor(null);
+      setGame(new Chess());
+      setIsGameOver(false);
+      setShowRestartBtn(false);
+      setMoveFrom('');
+      setHighlightedSquares({});
+      setStatus("Let's Play!");
+      return;
+    }
     const newGame = new Chess();
     setGame(newGame);
     setStatus(getGameStatus(newGame));
     setIsGameOver(false);
     setShowRestartBtn(false);
     setOrientation('white');
+  };
+
+  const handleStartEngineGame = () => {
+    const color = colorChoice === 'r' ? (Math.random() < 0.5 ? 'w' : 'b') : colorChoice;
+    requestId.current++;
+    positionsRef.current = [];
+    const fresh = new Chess();
+    setGame(fresh);
+    setPlayerColor(color);
+    setOrientation(color === 'w' ? 'white' : 'black');
+    setIsGameOver(false);
+    setShowRestartBtn(false);
+    setEngineReady(true);
+    setStatus(color === 'w' ? 'Your move!' : 'Computer is thinking...');
   };
 
   const handleJoinGame = () => { if (gameId && socket) socket.emit('joinRoom', gameId); };
@@ -145,6 +221,11 @@ function Game({ mode, onExit, token }) {
       setGame(gameCopy);
       setStatus(getGameStatus(gameCopy));
       setOrientation(p => p === 'white' ? 'black' : 'white'); 
+    } else if (mode === 'engine') {
+      if (isThinking || game.turn() !== playerColor) return false;
+      positionsRef.current.push(game.fen());
+      setGame(gameCopy);
+      setStatus(getGameStatus(gameCopy));
     } else if (mode === 'online' && socket) {
       socket.emit('playerMove', { roomId: gameId, from, to, promotion: 'q' });
     }
@@ -156,6 +237,7 @@ function Game({ mode, onExit, token }) {
     
     const currentTurn = game.turn();
     if (mode === 'online' && currentTurn !== playerColor) return;
+    if (mode === 'engine' && (!engineReady || isThinking || currentTurn !== playerColor)) return;
     
     const pieceOnTarget = game.get(square);
     if (moveFrom && pieceOnTarget && pieceOnTarget.color === currentTurn) {
@@ -211,6 +293,35 @@ function Game({ mode, onExit, token }) {
         </div>
       )}
       
+      {mode === 'engine' && !engineReady && (
+        <div className="engine-setup">
+          <h3>Choose difficulty</h3>
+          <div className="option-row">
+            {ENGINE_LEVELS.map((l) => (
+              <button key={l.id} className={`option-btn ${engineLevel === l.id ? 'active' : ''}`} onClick={() => setEngineLevel(l.id)}>
+                {l.name}
+              </button>
+            ))}
+          </div>
+          <div className="level-hint">{ENGINE_LEVELS.find((l) => l.id === engineLevel)?.hint}</div>
+          <h3>Play as</h3>
+          <div className="option-row">
+            {[['w', 'White'], ['b', 'Black'], ['r', 'Random']].map(([v, label]) => (
+              <button key={v} className={`option-btn ${colorChoice === v ? 'active' : ''}`} onClick={() => setColorChoice(v)}>
+                {label}
+              </button>
+            ))}
+          </div>
+          <button className="start-btn" onClick={handleStartEngineGame}>Start Game</button>
+        </div>
+      )}
+
+      {mode === 'engine' && engineReady && showRestartBtn && (
+        <div style={{ textAlign: 'center', marginBottom: '0.5rem' }}>
+          <button onClick={handleRestart} className="restart-btn">New Game</button>
+        </div>
+      )}
+
       {mode === 'local' && (
         <div className="local-game-info">
           <div className="win-counter">White: {whiteWins}</div>
@@ -230,7 +341,7 @@ function Game({ mode, onExit, token }) {
         boardState={game.board()}
         onSquareClick={onSquareClick}
         highlightedSquares={highlightedSquares}
-        orientation={mode === 'online' ? (playerColor === 'b' ? 'black' : 'white') : orientation}
+        orientation={mode === 'online' || mode === 'engine' ? (playerColor === 'b' ? 'black' : 'white') : orientation}
       />
     </div>
   );

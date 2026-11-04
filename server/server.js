@@ -2,23 +2,25 @@ import express from "express";
 import http from "http";
 import { Server } from "socket.io";
 import { Chess } from "chess.js";
-import { spawn } from 'child_process';
-import { v4 as uuidv4 } from 'uuid';
+import { v4 as uuidv4 } from "uuid";
 import pg from "pg";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import 'dotenv/config';
-import cors from 'cors';
-import { OAuth2Client } from 'google-auth-library';
+import "dotenv/config";
+import cors from "cors";
+import { OAuth2Client } from "google-auth-library";
 // --- DATABASE SETUP ---
 const { Pool } = pg;
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   // Cloud Postgres (Neon, Render, Supabase) needs SSL; set DATABASE_SSL=false for local dev
-  ssl: process.env.DATABASE_SSL === 'false' ? false : { rejectUnauthorized: false },
+  ssl:
+    process.env.DATABASE_SSL === "false"
+      ? false
+      : { rejectUnauthorized: false },
 });
 
-const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || 'http://localhost:5173';
+const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || "http://localhost:5173";
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const app = express();
@@ -38,17 +40,19 @@ const io = new Server(server, {
 app.post("/api/register", async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) {
-    return res.status(400).json({ message: "Username and password are required." });
+    return res
+      .status(400)
+      .json({ message: "Username and password are required." });
   }
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
     const result = await pool.query(
       "INSERT INTO users (username, password) VALUES ($1, $2) RETURNING id, username",
-      [username, hashedPassword]
+      [username, hashedPassword],
     );
     res.status(201).json(result.rows[0]);
   } catch (error) {
-    if (error.code === '23505') {
+    if (error.code === "23505") {
       return res.status(409).json({ message: "Username already exists." });
     }
     console.error(error);
@@ -59,13 +63,17 @@ app.post("/api/register", async (req, res) => {
 app.post("/api/login", async (req, res) => {
   const { username, password } = req.body;
   try {
-    const result = await pool.query("SELECT * FROM users WHERE username = $1", [username]);
+    const result = await pool.query("SELECT * FROM users WHERE username = $1", [
+      username,
+    ]);
     const user = result.rows[0];
     if (!user) {
       return res.status(404).json({ message: "User not found." });
     }
     if (!user.password) {
-      return res.status(400).json({ message: "This account uses Google sign-in." });
+      return res
+        .status(400)
+        .json({ message: "This account uses Google sign-in." });
     }
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
@@ -81,17 +89,21 @@ app.post("/api/login", async (req, res) => {
 });
 
 const signToken = (user) =>
-  jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '1d' });
+  jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: "1d" });
 
 // Express middleware: requires "Authorization: Bearer <jwt>"
 const requireAuth = async (req, res, next) => {
-  const header = req.headers.authorization || '';
-  const token = header.startsWith('Bearer ') ? header.slice(7) : null;
+  const header = req.headers.authorization || "";
+  const token = header.startsWith("Bearer ") ? header.slice(7) : null;
   if (!token) return res.status(401).json({ message: "Missing token." });
   try {
     const { userId } = jwt.verify(token, process.env.JWT_SECRET);
-    const result = await pool.query("SELECT id, username FROM users WHERE id = $1", [userId]);
-    if (!result.rows[0]) return res.status(401).json({ message: "User no longer exists." });
+    const result = await pool.query(
+      "SELECT id, username FROM users WHERE id = $1",
+      [userId],
+    );
+    if (!result.rows[0])
+      return res.status(401).json({ message: "User no longer exists." });
     req.user = result.rows[0];
     next();
   } catch {
@@ -108,7 +120,8 @@ app.get("/api/verify", requireAuth, (req, res) => {
 // we verify it with Google, then issue our own JWT.
 app.post("/api/auth/google", async (req, res) => {
   const { credential } = req.body;
-  if (!credential) return res.status(400).json({ message: "Missing Google credential." });
+  if (!credential)
+    return res.status(400).json({ message: "Missing Google credential." });
   try {
     const ticket = await googleClient.verifyIdToken({
       idToken: credential,
@@ -116,35 +129,45 @@ app.post("/api/auth/google", async (req, res) => {
     });
     const payload = ticket.getPayload();
     if (!payload?.email || !payload.email_verified) {
-      return res.status(401).json({ message: "Google account email is not verified." });
+      return res
+        .status(401)
+        .json({ message: "Google account email is not verified." });
     }
     const { sub: googleId, email, name } = payload;
 
     // 1) returning Google user
-    let result = await pool.query("SELECT id, username FROM users WHERE google_id = $1", [googleId]);
+    let result = await pool.query(
+      "SELECT id, username FROM users WHERE google_id = $1",
+      [googleId],
+    );
     let user = result.rows[0];
 
     // 2) existing account with same verified email: link it
     if (!user) {
       result = await pool.query(
         "UPDATE users SET google_id = $1 WHERE email = $2 RETURNING id, username",
-        [googleId, email]
+        [googleId, email],
       );
       user = result.rows[0];
     }
 
     // 3) brand new user: create with a unique username
     if (!user) {
-      const base = (name || email.split('@')[0]).replace(/\s+/g, '').slice(0, 20) || 'player';
+      const base =
+        (name || email.split("@")[0]).replace(/\s+/g, "").slice(0, 20) ||
+        "player";
       let username = base;
       for (let i = 0; i < 5; i++) {
-        const taken = await pool.query("SELECT 1 FROM users WHERE username = $1", [username]);
+        const taken = await pool.query(
+          "SELECT 1 FROM users WHERE username = $1",
+          [username],
+        );
         if (!taken.rows[0]) break;
         username = `${base}${Math.floor(1000 + Math.random() * 9000)}`;
       }
       result = await pool.query(
         "INSERT INTO users (username, email, google_id) VALUES ($1, $2, $3) RETURNING id, username",
-        [username, email, googleId]
+        [username, email, googleId],
       );
       user = result.rows[0];
     }
@@ -160,7 +183,6 @@ app.post("/api/auth/google", async (req, res) => {
 // --- REAL-TIME CHESS LOGIC (Socket.IO) ---
 // =======================================================
 const rooms = {};
-const engines = {};
 const playerQueue = [];
 
 // Online play requires a valid JWT; the client sends it in the Socket.IO handshake
@@ -190,7 +212,7 @@ io.on("connection", (socket) => {
     }
     socket.join(roomId);
     socket.gameId = roomId;
-    const color = !room.players.w ? 'w' : 'b';
+    const color = !room.players.w ? "w" : "b";
     room.players[color] = socket.id;
     socket.emit("assignedColor", color);
     if (Object.keys(room.players).length === 2) {
@@ -211,40 +233,16 @@ io.on("connection", (socket) => {
       p2Socket.join(roomId);
       p1Socket.gameId = roomId;
       p2Socket.gameId = roomId;
-      rooms[roomId] = { id: roomId, chess: new Chess(), players: { w: p1Id, b: p2Id } };
+      rooms[roomId] = {
+        id: roomId,
+        chess: new Chess(),
+        players: { w: p1Id, b: p2Id },
+      };
       io.to(roomId).emit("gameFound", {
         roomId,
         fen: rooms[roomId].chess.fen(),
-        colors: { [p1Id]: 'w', [p2Id]: 'b' }
+        colors: { [p1Id]: "w", [p2Id]: "b" },
       });
-    }
-  });
-
-  socket.on('startEngineGame', () => {
-    const gameId = uuidv4();
-    rooms[gameId] = { id: gameId, chess: new Chess(), players: { w: socket.id } };
-    socket.join(gameId);
-    socket.gameId = gameId;
-    socket.emit('assignedColor', 'w');
-    socket.emit('gameState', rooms[gameId].chess.fen());
-    const enginePath = './engine.exe';
-    try {
-      const engine = spawn(enginePath);
-      engines[gameId] = engine;
-      engine.stdout.on('data', (data) => {
-        const output = data.toString().trim();
-        if (output.startsWith('bestmove')) {
-          const moveStr = output.split(' ')[1];
-          const room = rooms[gameId];
-          if (room && room.chess.turn() === 'b') {
-            handleMove(room, { from: moveStr.substring(0, 2), to: moveStr.substring(2, 4) }, 'engine');
-          }
-        }
-      });
-      engine.on('error', (err) => io.to(gameId).emit('gameError', 'Could not start the chess engine.'));
-      engine.on('close', () => delete engines[gameId]);
-    } catch (err) {
-      io.to(gameId).emit('gameError', 'Could not find the chess engine executable.');
     }
   });
 
@@ -252,44 +250,38 @@ io.on("connection", (socket) => {
     const gameId = socket.gameId;
     const room = rooms[gameId];
     if (!room) return;
-    const playerColor = Object.keys(room.players).find(key => room.players[key] === socket.id);
+    const playerColor = Object.keys(room.players).find(
+      (key) => room.players[key] === socket.id,
+    );
     if (playerColor !== room.chess.turn()) return;
-    handleMove(room, moveData, 'player');
+    handleMove(room, moveData);
   });
 
-  function handleMove(room, move, source) {
+  function handleMove(room, move) {
     try {
       if (room.chess.move(move)) {
         io.to(room.id).emit("moveMade", { fen: room.chess.fen() });
         if (room.chess.isGameOver()) {
-          let reason = 'Game Over';
+          let reason = "Game Over";
           if (room.chess.isCheckmate()) {
-            const winner = room.chess.turn() === 'w' ? 'Black' : 'White';
+            const winner = room.chess.turn() === "w" ? "Black" : "White";
             reason = `Checkmate! ${winner} wins.`;
           } else if (room.chess.isDraw()) {
-            reason = 'Draw!';
+            reason = "Draw!";
           }
-          io.to(room.id).emit('gameOver', { reason });
-        } else if (source === 'player' && engines[room.id]) {
-          const engine = engines[room.id];
-          engine.stdin.write(`position fen ${room.chess.fen()}\n`);
-          engine.stdin.write('go movetime 2000\n');
+          io.to(room.id).emit("gameOver", { reason });
         }
       }
     } catch (err) {
-      socket.emit('invalidMove', { message: 'Invalid move format' });
+      socket.emit("invalidMove", { message: "Invalid move format" });
     }
   }
 
-  socket.on('disconnect', () => {
+  socket.on("disconnect", () => {
     console.log(`User Disconnected: ${socket.id}`);
     const gameId = socket.gameId;
     if (gameId && rooms[gameId]) {
-      io.to(gameId).emit('opponentDisconnected');
-      if(engines[gameId]) {
-        engines[gameId].kill();
-        delete engines[gameId];
-      }
+      io.to(gameId).emit("opponentDisconnected");
       delete rooms[gameId];
     }
     const queueIndex = playerQueue.indexOf(socket.id);

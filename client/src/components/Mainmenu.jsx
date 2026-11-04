@@ -20,7 +20,7 @@ function MainMenu({ onSelectMode, user }) {
         </button>
         <button onClick={() => onSelectMode('engine')}>
           <h3>🤖 Play vs Computer</h3>
-          <p>Challenge the offline C++ chess engine.</p>
+          <p>Challenge the built-in chess engine. Four difficulty levels.</p>
         </button>
         <button onClick={() => onSelectMode('local')}>
           <h3>👥 Play on Same Device</h3>

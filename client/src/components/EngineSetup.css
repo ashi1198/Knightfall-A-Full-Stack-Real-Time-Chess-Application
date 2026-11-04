@@ -1,0 +1,30 @@
+.engine-setup {
+  max-width: 420px;
+  margin: 0 auto 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  text-align: center;
+}
+.engine-setup h3 { margin: 0.25rem 0; }
+.engine-setup .option-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+}
+.engine-setup .option-btn {
+  padding: 0.5rem 0.9rem;
+  border-radius: 8px;
+  border: 1px solid #555;
+  background: #1f1f1f;
+  color: #e0e0e0;
+  cursor: pointer;
+}
+.engine-setup .option-btn.active {
+  background: #769656;
+  border-color: #769656;
+  color: #fff;
+}
+.engine-setup .level-hint { font-size: 0.8rem; opacity: 0.7; }
+.engine-setup .start-btn { padding: 0.7rem 1rem; font-weight: 600; }
